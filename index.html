@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Assistant Setup</title>
+<style>
+  :root {
+    --bg: #f4f3ef; --card: #ffffff; --ink: #1d1d1b; --muted: #6b6a66; --line: #e3e1da;
+    --accent: #1f5f4a; --accent-ink: #ffffff; --ok: #1f7a4d; --ok-bg: #e7f4ec; --warn: #9a5b00; --warn-bg: #fbf1e1;
+    --err: #a3261b; --err-bg: #fbe9e7; --radius: 14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #141413; --card: #1e1e1c; --ink: #f1efe8; --muted: #a3a19a; --line: #33322e;
+            --accent: #4fae8a; --accent-ink: #0f1d17; --ok: #6fd19c; --ok-bg: #1c2e24; --warn: #e0a64a; --warn-bg: #2e2516;
+            --err: #f08a7e; --err-bg: #331c19; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif; }
+  .wrap { max-width: 640px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 28px; line-height: 1.2; margin: 0 0 6px; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); margin: 0 0 20px; }
+  .progress { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+  .bar { flex: 1; height: 8px; background: var(--line); border-radius: 99px; overflow: hidden; }
+  .bar > i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .4s; }
+  .count { font-size: 14px; color: var(--muted); white-space: nowrap; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; margin-bottom: 14px; }
+  .card.done { border-color: var(--ok); }
+  .head { display: flex; gap: 14px; align-items: flex-start; }
+  .num { flex: none; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center;
+         background: var(--bg); border: 1px solid var(--line); font-weight: 600; font-size: 15px; }
+  .card.done .num { background: var(--ok); border-color: var(--ok); color: var(--card); }
+  h2 { font-size: 18px; margin: 3px 0 2px; }
+  .why { color: var(--muted); font-size: 14px; margin: 0; }
+  .body { margin: 14px 0 0 46px; }
+  @media (max-width: 480px) { .body { margin-left: 0; } }
+  button, a.btn { font: inherit; font-weight: 600; border: 0; border-radius: 10px; padding: 11px 18px; cursor: pointer;
+           background: var(--accent); color: var(--accent-ink); text-decoration: none; display: inline-block; }
+  button.ghost, a.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+  button:disabled { opacity: .45; cursor: default; }
+  .msg { margin-top: 12px; border-radius: 10px; padding: 10px 12px; font-size: 14px; }
+  .msg.ok { background: var(--ok-bg); color: var(--ok); }
+  .msg.warn { background: var(--warn-bg); color: var(--warn); }
+  .msg.err { background: var(--err-bg); color: var(--err); }
+  .msg ul { margin: 6px 0 0; padding-left: 18px; color: var(--ink); }
+  label { display: block; font-size: 14px; font-weight: 600; margin: 10px 0 4px; }
+  select, input[type=password] { width: 100%; font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line);
+                  background: var(--bg); color: var(--ink); }
+  .hint { font-size: 13px; color: var(--muted); margin: 6px 0 0; }
+  .hint a { color: inherit; }
+  .row { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; align-items: center; }
+  .rules { margin: 0; padding: 0; list-style: none; font-size: 15px; }
+  .rules li { padding: 8px 0; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 12px; }
+  .rules li:last-child { border-bottom: 0; }
+  .rules span:last-child { color: var(--muted); text-align: right; }
+  .days { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .days label { font-weight: 500; margin: 0; display: flex; gap: 4px; align-items: center; border: 1px solid var(--line);
+                border-radius: 8px; padding: 6px 9px; cursor: pointer; }
+  .start { text-align: center; margin-top: 26px; }
+  .start button { font-size: 18px; padding: 15px 34px; }
+  .start p { color: var(--muted); font-size: 14px; }
+  .live { text-align: center; padding: 20px 16px 8px; }
+  .live h2 { font-size: 24px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="loading" class="sub">…</div>
+  <div id="fatal" class="msg err" hidden></div>
+
+  <div id="app" hidden>
+    <div id="live" class="live" hidden>
+      <h2 data-t="live_title"></h2>
+      <p class="sub" data-t="live_text"></p>
+    </div>
+
+    <div id="intro">
+      <h1 data-t="title"></h1>
+      <p class="sub" data-t="intro"></p>
+    </div>
+    <div class="progress"><div class="bar"><i id="bar"></i></div><span class="count" id="count"></span></div>
+
+    <section class="card" id="c-telegram">
+      <div class="head"><div class="num">1</div><div><h2 data-t="tg_h"></h2><p class="why" data-t="tg_why"></p></div></div>
+      <div class="body">
+        <div class="todo"><a class="btn" id="tg-btn" target="_blank" rel="noopener" data-t="tg_btn"></a>
+          <p class="hint" data-t="tg_hint"></p></div>
+        <div class="msg ok when-done" data-t="tg_ok"></div>
+      </div>
+    </section>
+
+    <section class="card" id="c-zoho">
+      <div class="head"><div class="num">2</div><div><h2 data-t="zo_h"></h2><p class="why" data-t="zo_why"></p></div></div>
+      <div class="body">
+        <div class="todo"><button id="zo-btn" data-t="zo_btn"></button><p class="hint" data-t="zo_hint"></p></div>
+        <div class="msg ok when-done" id="zo-ok"></div>
+        <div class="msg warn" id="zo-warn" hidden></div>
+        <div class="msg err" id="zo-err" hidden></div>
+        <div class="row when-done"><button class="ghost" id="zo-again" data-t="again"></button></div>
+      </div>
+    </section>
+
+    <section class="card" id="c-shopify">
+      <div class="head"><div class="num">3</div><div><h2 data-t="sh_h"></h2><p class="why" data-t="sh_why"></p></div></div>
+      <div class="body">
+        <div class="todo"><button id="sh-btn" data-t="sh_btn"></button><p class="hint" id="sh-hint"></p></div>
+        <div class="msg ok when-done" id="sh-ok"></div>
+        <div class="msg warn" id="sh-warn" hidden></div>
+        <div class="msg err" id="sh-err" hidden></div>
+        <div class="row when-done"><button class="ghost" id="sh-again" data-t="again"></button></div>
+      </div>
+    </section>
+
+    <section class="card" id="c-model">
+      <div class="head"><div class="num">4</div><div><h2 data-t="md_h"></h2><p class="why" data-t="md_why"></p></div></div>
+      <div class="body">
+        <div class="todo">
+          <label for="prov" data-t="md_prov"></label>
+          <select id="prov"></select>
+          <label for="key" data-t="md_key"></label>
+          <input id="key" type="password" autocomplete="off" spellcheck="false">
+          <p class="hint"><span data-t="md_hint"></span> <a id="key-url" target="_blank" rel="noopener" data-t="md_where"></a></p>
+          <div class="row"><button id="md-btn" data-t="md_btn"></button></div>
+        </div>
+        <div class="msg ok when-done" id="md-ok"></div>
+        <div class="msg warn" id="md-warn" hidden></div>
+        <div class="msg err" id="md-err" hidden></div>
+        <div class="row when-done"><button class="ghost" id="md-again" data-t="md_change"></button></div>
+      </div>
+    </section>
+
+    <section class="card" id="c-rules">
+      <div class="head"><div class="num">5</div><div><h2 data-t="ru_h"></h2><p class="why" data-t="ru_why"></p></div></div>
+      <div class="body">
+        <ul class="rules">
+          <li><span data-t="ru_ship"></span><span data-t="ru_from_ship"></span></li>
+          <li><span data-t="ru_ret"></span><span data-t="ru_from_ret"></span></li>
+          <li><span data-t="ru_cost"></span><span data-t="ru_from_home"></span></li>
+          <li><span data-t="ru_sign"></span><span id="ru-sign"></span></li>
+          <li><span data-t="ru_always"></span><span data-t="ru_always_v"></span></li>
+        </ul>
+        <label data-t="ru_days"></label>
+        <div class="days" id="days"></div>
+        <div class="row todo"><button id="ru-btn" data-t="ru_btn"></button></div>
+        <div class="msg ok when-done" data-t="ru_ok"></div>
+      </div>
+    </section>
+
+    <div class="start" id="start-box">
+      <button id="go" disabled data-t="go"></button>
+      <p id="go-hint"></p>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = "https://mzopppqahuggdhjkqgwo.supabase.co/functions/v1/setup";
+const qs = new URLSearchParams(location.search);
+const T = qs.get("t") || "";
+let LANG = qs.get("lang") || null;
+let S = null;
+
+const TXT = {
+  it: {
+    title: "Configura il tuo assistente email", count: (n) => `${n} di 5 fatti`,
+    intro: "Quattro collegamenti e un controllo delle tue regole. Circa 10 minuti. Niente viene inviato a un cliente finché non tocchi Invia sul telefono.",
+    tg_h: "Il tuo telefono (Telegram)", tg_why: "Qui ricevi ogni risposta da approvare.",
+    tg_btn: "Apri Telegram", tg_hint: "Si apre Telegram. Tocca Avvia, poi torna qui: questa pagina si aggiorna da sola.",
+    tg_ok: "✓ Collegato. Hai un messaggio di benvenuto su Telegram.",
+    zo_h: "La tua email di assistenza (Zoho)", zo_why: "Così l'assistente legge le nuove email e invia le risposte che approvi.",
+    zo_btn: "Accedi con Zoho", zo_hint: "Zoho ti chiede il permesso. Tocca Accetta.",
+    zo_ok: (z) => `✓ Collegato: ${z.from_address || ""}` + (z.recent?.length ? `. Le tue ultime email:<ul>${z.recent.map(s => `<li>${esc(s)}</li>`).join("")}</ul>` : ""),
+    zo_nosupport: (z) => `Attenzione: non ho trovato ${S.support_address} in questo account; risponderò da ${z.from_address}. Se è sbagliato, accedi con l'account che riceve ${S.support_address}.`,
+    sh_h: "Il tuo negozio (Shopify)", sh_why: "Solo lettura. L'assistente guarda ordini e tracking; non può cambiare niente.",
+    sh_btn: "Collega il negozio", sh_hint: (d) => `Negozio: ${d}. Shopify ti mostra cosa possiamo leggere. Tocca Installa.`,
+    sh_ok: (o) => o?.name ? `✓ Collegato. Ultimo ordine ${o.name}: email cliente ${o.email ? "✓" : "✗"}, indirizzo ${o.address ? "✓" : "✗"}, tracking ${o.tracking ? "✓" : "–"}` : "✓ Collegato.",
+    sh_hidden: "L'email del cliente arriva vuota: Shopify non ci ha ancora dato l'accesso ai dati dei clienti. Avvisa Raheel.",
+    md_h: "Modello AI", md_why: "L'assistente usa il tuo account, così paghi direttamente il fornitore (circa 15–25 € al mese con 30 email al giorno).",
+    md_prov: "Fornitore", md_key: "Chiave API", md_hint: "La trovi sul sito del fornitore, alla voce «API keys».", md_where: "Apri la pagina delle chiavi",
+    md_btn: "Prova la chiave", md_testing: "Provo…", md_change: "Cambia chiave o fornitore",
+    md_ok: (m) => `✓ La chiave funziona. ${m.provider === "anthropic" ? "Claude Sonnet scrive le risposte, Claude Haiku smista le email." : ""}`,
+    md_untested: "Questo fornitore non è ancora stato provato con le tue email. Raheel lo verifica prima dell'avvio.",
+    rec: " (consigliato)",
+    ru_h: "Le tue regole", ru_why: "Le abbiamo prese dalle pagine del tuo negozio. L'assistente promette solo quello che c'è qui.",
+    ru_ship: "Tempi di spedizione e consegna", ru_from_ship: "dalla tua politica di spedizione",
+    ru_ret: "Resi e rimborsi", ru_from_ret: "dalla tua politica di rimborso", ru_cost: "Costi di spedizione", ru_from_home: "dalla tua homepage",
+    ru_sign: "Firma", ru_always: "Sempre a te, mai in bozza", ru_always_v: "rimborsi, salute, reclami",
+    ru_days: "Giorni lavorativi (per i tempi di spedizione)", ru_btn: "È tutto giusto", ru_ok: "✓ Regole confermate.",
+    days: ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"],
+    go: "Avvia l'assistente", go_wait: "Completa prima i cinque passi.", go_ready: "Da adesso le nuove email a {addr} arrivano su Telegram.",
+    live_title: "✓ Il tuo assistente è attivo",
+    live_text: "Le nuove email arrivano su Telegram dalle 7:00 alle 22:00. Approvi ogni risposta con un tocco. Per cambiare qualcosa, riapri questo link.",
+    again: "Ricollega", expired: "Questo link non è più valido. Chiedi a Raheel un link nuovo.", neterr: "Non riesco a raggiungere il server. Riprova tra un attimo.",
+  },
+  en: {
+    title: "Set up your email assistant", count: (n) => `${n} of 5 done`,
+    intro: "Four connections and a quick look at your rules. About 10 minutes. Nothing is sent to a customer until you tap Send on your phone.",
+    tg_h: "Your phone (Telegram)", tg_why: "This is where you get each reply to approve.",
+    tg_btn: "Open Telegram", tg_hint: "Telegram opens. Tap Start, then come back: this page updates by itself.",
+    tg_ok: "✓ Connected. There's a welcome message in your Telegram.",
+    zo_h: "Your support email (Zoho)", zo_why: "So the assistant can read new emails and send the replies you approve.",
+    zo_btn: "Sign in with Zoho", zo_hint: "Zoho asks you to allow access. Tap Accept.",
+    zo_ok: (z) => `✓ Connected: ${z.from_address || ""}` + (z.recent?.length ? `. Your last emails:<ul>${z.recent.map(s => `<li>${esc(s)}</li>`).join("")}</ul>` : ""),
+    zo_nosupport: (z) => `Note: ${S.support_address} isn't in this account; replies will go out from ${z.from_address}. If that's wrong, sign in with the account that receives ${S.support_address}.`,
+    sh_h: "Your shop (Shopify)", sh_why: "Read-only. The assistant looks up orders and tracking; it can't change anything.",
+    sh_btn: "Connect my shop", sh_hint: (d) => `Shop: ${d}. Shopify shows what we can read. Tap Install.`,
+    sh_ok: (o) => o?.name ? `✓ Connected. Latest order ${o.name}: customer email ${o.email ? "✓" : "✗"}, address ${o.address ? "✓" : "✗"}, tracking ${o.tracking ? "✓" : "–"}` : "✓ Connected.",
+    sh_hidden: "Customer emails come back empty: Shopify hasn't given access to customer data yet. Tell Raheel.",
+    md_h: "AI model", md_why: "The assistant uses your own account, so you pay the provider directly (about €15–25 a month at 30 emails a day).",
+    md_prov: "Provider", md_key: "API key", md_hint: "You'll find it on the provider's site under \"API keys\".", md_where: "Open the keys page",
+    md_btn: "Test the key", md_testing: "Testing…", md_change: "Change key or provider",
+    md_ok: (m) => `✓ The key works. ${m.provider === "anthropic" ? "Claude Sonnet writes the replies, Claude Haiku sorts the emails." : ""}`,
+    md_untested: "This provider hasn't been tested on your emails yet. Raheel checks it before you start.",
+    rec: " (recommended)",
+    ru_h: "Your rules", ru_why: "We took these from your shop's pages. The assistant only promises what's here.",
+    ru_ship: "Shipping and delivery times", ru_from_ship: "from your shipping policy",
+    ru_ret: "Returns and refunds", ru_from_ret: "from your refund policy", ru_cost: "Shipping costs", ru_from_home: "from your homepage",
+    ru_sign: "Sign-off", ru_always: "Always sent to you, never drafted", ru_always_v: "refunds, health, complaints",
+    ru_days: "Working days (for shipping times)", ru_btn: "Looks right", ru_ok: "✓ Rules confirmed.",
+    days: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+    go: "Start the assistant", go_wait: "Finish the five steps above first.", go_ready: "From now on, new emails to {addr} arrive in Telegram.",
+    live_title: "✓ Your assistant is live",
+    live_text: "New emails arrive in Telegram between 07:00 and 22:00. You approve each reply with one tap. To change anything, open this link again.",
+    again: "Reconnect", expired: "This link has expired. Ask Raheel for a new one.", neterr: "Can't reach the server. Try again in a moment.",
+  },
+};
+const PROVIDER_NAMES = { anthropic: "Anthropic (Claude)", openai: "OpenAI", gemini: "Google (Gemini)", mistral: "Mistral" };
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const L = () => TXT[LANG] || TXT.it;
+const show = (el, on) => { el.hidden = !on; };
+
+async function api(path, body, ms = 15000) {
+  // Give up after 15 s (60 s for the key test, which calls the AI provider) instead of hanging.
+  const ctl = new AbortController(); const timer = setTimeout(() => ctl.abort(), ms);
+  try {
+    const r = await fetch(API + path + (body ? "" : (path.includes("?") ? "&" : "?") + "t=" + encodeURIComponent(T)), body ? {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ t: T, ...body }), signal: ctl.signal }
+      : { signal: ctl.signal });
+    return await r.json();
+  } finally { clearTimeout(timer); }
+}
+
+function render() {
+  const t = L();
+  document.documentElement.lang = LANG;
+  document.querySelectorAll("[data-t]").forEach((el) => { const v = t[el.dataset.t]; if (typeof v === "string") el.textContent = v; });
+  const done = { telegram: S.telegram.done, zoho: S.zoho.done, shopify: S.shopify.done, model: S.model.done, rules: S.rules.done };
+  for (const [k, v] of Object.entries(done)) {
+    const card = $("c-" + k);
+    card.classList.toggle("done", v);
+    card.querySelectorAll(".todo").forEach((el) => show(el, !v));
+    card.querySelectorAll(".when-done").forEach((el) => show(el, v));
+  }
+  const n = Object.values(done).filter(Boolean).length;
+  $("bar").style.width = (n / 5 * 100) + "%";
+  $("count").textContent = t.count(n);
+
+  // Telegram
+  if (S.telegram.link) $("tg-btn").href = S.telegram.link;
+  // Zoho
+  if (S.zoho.done) $("zo-ok").innerHTML = t.zo_ok(S.zoho);
+  const zoWarn = S.zoho.done && S.zoho.from_address && S.support_address && S.zoho.from_address.toLowerCase() !== S.support_address.toLowerCase();
+  show($("zo-warn"), zoWarn); if (zoWarn) $("zo-warn").textContent = t.zo_nosupport(S.zoho);
+  // Shopify
+  $("sh-hint").textContent = t.sh_hint(S.shopify_domain || "");
+  if (S.shopify.done) $("sh-ok").textContent = t.sh_ok(S.shopify.test_order);
+  const hidden = S.shopify.done && S.shopify.test_order?.name && !S.shopify.test_order.email;
+  show($("sh-warn"), hidden); if (hidden) $("sh-warn").textContent = t.sh_hidden;
+  // Model
+  const sel = $("prov");
+  if (!sel.options.length) {
+    for (const p of S.providers || []) {
+      const o = document.createElement("option"); o.value = p.provider; o.dataset.url = p.key_url || "";
+      o.textContent = (PROVIDER_NAMES[p.provider] || p.provider) + (p.provider === "anthropic" ? t.rec : ""); sel.appendChild(o);
+    }
+    sel.onchange = () => { $("key-url").href = sel.selectedOptions[0]?.dataset.url || "#"; };
+    sel.onchange();
+  }
+  if (S.model.done) $("md-ok").textContent = t.md_ok(S.model);
+  show($("md-warn"), S.model.done && S.model.tested === false); $("md-warn").textContent = t.md_untested;
+  // Rules
+  $("ru-sign").textContent = `"${S.signature || ""}"`;
+  const days = $("days");
+  if (!days.children.length) t.days.forEach((d, i) => {
+    const lab = document.createElement("label");
+    lab.innerHTML = `<input type="checkbox" value="${i + 1}" ${(S.working_days || [1, 2, 3, 4, 5]).includes(i + 1) ? "checked" : ""}> ${d}`;
+    days.appendChild(lab);
+  });
+  // Start / live
+  show($("live"), S.live); show($("intro"), !S.live); show($("start-box"), !S.live);
+  $("go").disabled = n < 5;
+  $("go-hint").textContent = n < 5 ? t.go_wait : t.go_ready.replace("{addr}", S.support_address || "");
+}
+
+async function refresh() {
+  try {
+    const s = await api("/state");
+    if (!s.ok) { $("loading").hidden = true; $("fatal").hidden = false; $("fatal").textContent = TXT[LANG || "it"].expired; return false; }
+    S = s; LANG = LANG || (s.language === "it" ? "it" : "en");
+    $("loading").hidden = true; $("app").hidden = false;
+    render();
+    return true;
+  } catch {
+    if (!S) { $("loading").textContent = TXT[LANG || "it"].neterr; setTimeout(refresh, 4000); }
+    return false;
+  }
+}
+
+function showReturn() {
+  const done = qs.get("done"), err = qs.get("error");
+  if (done && err) { const box = $({ zoho: "zo-err", shopify: "sh-err" }[done] || "zo-err"); box.hidden = false; box.textContent = err; }
+  history.replaceState(null, "", location.pathname + "?t=" + encodeURIComponent(T) + (qs.get("lang") ? "&lang=" + qs.get("lang") : ""));
+}
+
+$("zo-btn").onclick = $("zo-again").onclick = () => { location.href = API + "/zoho/start?t=" + encodeURIComponent(T); };
+$("sh-btn").onclick = $("sh-again").onclick = () => { location.href = API + "/shopify/start?t=" + encodeURIComponent(T); };
+$("md-again").onclick = () => { S.model.done = false; render(); };
+$("md-btn").onclick = async () => {
+  const btn = $("md-btn"), key = $("key").value.trim();
+  $("md-err").hidden = true;
+  if (!key) { $("key").focus(); return; }
+  btn.disabled = true; btn.textContent = L().md_testing;
+  try {
+    const r = await api("/model", { provider: $("prov").value, key }, 60000);
+    $("key").value = "";
+    if (!r.ok) { $("md-err").hidden = false; $("md-err").textContent = r.reason; }
+    await refresh();
+  } catch { $("md-err").hidden = false; $("md-err").textContent = L().neterr; }
+  btn.disabled = false; btn.textContent = L().md_btn;
+};
+$("ru-btn").onclick = async () => {
+  const days = [...document.querySelectorAll("#days input:checked")].map((i) => Number(i.value));
+  await api("/rules", { working_days: days }); await refresh();
+};
+$("go").onclick = async () => {
+  $("go").disabled = true;
+  const r = await api("/start", {});
+  if (!r.ok) { $("go-hint").textContent = r.reason || L().neterr; $("go").disabled = false; return; }
+  await refresh(); window.scrollTo({ top: 0, behavior: "smooth" });
+};
+
+(async () => {
+  if (!T) { $("loading").hidden = true; $("fatal").hidden = false; $("fatal").textContent = TXT.it.expired; return; }
+  showReturn();
+  if (await refresh()) {
+    // While Telegram isn't connected, check every 3 s (he taps Start in Telegram, then comes back).
+    setInterval(() => { if (S && !S.telegram.done && !document.hidden) refresh(); }, 3000);
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });
+  }
+})();
+</script>
+</body>
+</html>
