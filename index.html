@@ -150,6 +150,21 @@
       </div>
     </section>
 
+    <section class="card" id="c-track123">
+      <div class="head"><div class="num">6</div><div><h2 data-t="tr_h"></h2><p class="why" data-t="tr_why"></p></div></div>
+      <div class="body">
+        <div class="todo">
+          <label for="tr-key" data-t="tr_key"></label>
+          <input id="tr-key" type="password" autocomplete="off" spellcheck="false">
+          <p class="hint" data-t="tr_hint"></p>
+          <div class="row"><button id="tr-btn" data-t="tr_btn"></button></div>
+        </div>
+        <div class="msg ok when-done" id="tr-ok"></div>
+        <div class="msg err" id="tr-err" hidden></div>
+        <div class="row when-done"><button class="ghost" id="tr-again" data-t="tr_change"></button></div>
+      </div>
+    </section>
+
     <div class="start" id="start-box">
       <button id="go" disabled data-t="go"></button>
       <p id="go-hint"></p>
@@ -166,7 +181,7 @@ let S = null;
 
 const TXT = {
   it: {
-    title: "Configura il tuo assistente email", count: (n) => `${n} di 5 fatti`,
+    title: "Configura il tuo assistente email", count: (n) => `${n} di 6 fatti`,
     intro: "Quattro collegamenti e un controllo delle tue regole. Circa 10 minuti. Niente viene inviato a un cliente finché non tocchi Invia sul telefono.",
     tg_h: "Il tuo telefono (Telegram)", tg_why: "Qui ricevi ogni risposta da approvare.",
     tg_btn: "Apri Telegram", tg_hint: "Si apre Telegram. Tocca Avvia, poi torna qui: questa pagina si aggiorna da sola.",
@@ -184,6 +199,10 @@ const TXT = {
     md_btn: "Prova la chiave", md_testing: "Provo…", md_change: "Cambia chiave o fornitore",
     md_ok: (m) => `✓ La chiave funziona. ${m.provider === "anthropic" ? "Claude Sonnet scrive le risposte, Claude Haiku smista le email." : ""}`,
     md_untested: "Questo fornitore non è ancora stato provato con le tue email. Raheel lo verifica prima dell'avvio.",
+    tr_h: "Tracking dei corrieri (Track123)", tr_why: "Solo lettura. Così l'assistente vede quando il pacco è già con GOFO o Poste Italiane e può dare al cliente il loro codice e i loro contatti, come fai tu.",
+    tr_key: "Chiave API di Track123", tr_hint: "Nell'app Track123 su Shopify: Impostazioni → Generali → API & Webhook. Copia la chiave e incollala qui.",
+    tr_btn: "Prova la chiave", tr_change: "Cambia chiave",
+    tr_ok: (x) => `✓ La chiave funziona${x.test_order ? `. Ordine di prova ${x.test_order}` : ""}${x.last_mile?.code ? `: ${x.last_mile.carrier || "corriere"} ${x.last_mile.code}` : (x.test_order ? ": ancora nessun codice del corriere italiano (il pacco è in transito)" : "")}.`,
     rec: " (consigliato)",
     ru_h: "Le tue regole", ru_why: "Le abbiamo prese dalle pagine del tuo negozio. L'assistente promette solo quello che c'è qui.",
     ru_ship: "Tempi di spedizione e consegna", ru_from_ship: "dalla tua politica di spedizione",
@@ -197,7 +216,7 @@ const TXT = {
     again: "Ricollega", expired: "Questo link non è più valido. Chiedi a Raheel un link nuovo.", neterr: "Non riesco a raggiungere il server. Riprova tra un attimo.",
   },
   en: {
-    title: "Set up your email assistant", count: (n) => `${n} of 5 done`,
+    title: "Set up your email assistant", count: (n) => `${n} of 6 done`,
     intro: "Four connections and a quick look at your rules. About 10 minutes. Nothing is sent to a customer until you tap Send on your phone.",
     tg_h: "Your phone (Telegram)", tg_why: "This is where you get each reply to approve.",
     tg_btn: "Open Telegram", tg_hint: "Telegram opens. Tap Start, then come back: this page updates by itself.",
@@ -215,6 +234,10 @@ const TXT = {
     md_btn: "Test the key", md_testing: "Testing…", md_change: "Change key or provider",
     md_ok: (m) => `✓ The key works. ${m.provider === "anthropic" ? "Claude Sonnet writes the replies, Claude Haiku sorts the emails." : ""}`,
     md_untested: "This provider hasn't been tested on your emails yet. Raheel checks it before you start.",
+    tr_h: "Courier tracking (Track123)", tr_why: "Read-only. So the assistant sees when a parcel is already with GOFO or Poste Italiane and can give the customer their code and contacts, the way you do.",
+    tr_key: "Track123 API key", tr_hint: "In the Track123 app in Shopify: Settings → General → API & Webhook. Copy the key and paste it here.",
+    tr_btn: "Test the key", tr_change: "Change key",
+    tr_ok: (x) => `✓ The key works${x.test_order ? `. Test order ${x.test_order}` : ""}${x.last_mile?.code ? `: ${x.last_mile.carrier || "courier"} ${x.last_mile.code}` : (x.test_order ? ": no Italian courier code yet (the parcel is in transit)" : "")}.`,
     rec: " (recommended)",
     ru_h: "Your rules", ru_why: "We took these from your shop's pages. The assistant only promises what's here.",
     ru_ship: "Shipping and delivery times", ru_from_ship: "from your shipping policy",
@@ -249,7 +272,7 @@ function render() {
   const t = L();
   document.documentElement.lang = LANG;
   document.querySelectorAll("[data-t]").forEach((el) => { const v = t[el.dataset.t]; if (typeof v === "string") el.textContent = v; });
-  const done = { telegram: S.telegram.done, zoho: S.zoho.done, shopify: S.shopify.done, model: S.model.done, rules: S.rules.done };
+  const done = { telegram: S.telegram.done, zoho: S.zoho.done, shopify: S.shopify.done, model: S.model.done, rules: S.rules.done, track123: !!S.track123?.done };
   for (const [k, v] of Object.entries(done)) {
     const card = $("c-" + k);
     card.classList.toggle("done", v);
@@ -257,7 +280,8 @@ function render() {
     card.querySelectorAll(".when-done").forEach((el) => show(el, v));
   }
   const n = Object.values(done).filter(Boolean).length;
-  $("bar").style.width = (n / 5 * 100) + "%";
+  $("bar").style.width = (n / 6 * 100) + "%";
+  const n5 = n - (done.track123 ? 1 : 0); // Start needs the first five; Track123 can come later
   $("count").textContent = t.count(n);
 
   // Telegram
@@ -283,6 +307,8 @@ function render() {
   }
   if (S.model.done) $("md-ok").textContent = t.md_ok(S.model);
   show($("md-warn"), S.model.done && S.model.tested === false); $("md-warn").textContent = t.md_untested;
+  // Track123
+  if (S.track123?.done) $("tr-ok").textContent = t.tr_ok(S.track123);
   // Rules
   $("ru-sign").textContent = `"${S.signature || ""}"`;
   const days = $("days");
@@ -293,8 +319,8 @@ function render() {
   });
   // Start / live
   show($("live"), S.live); show($("intro"), !S.live); show($("start-box"), !S.live);
-  $("go").disabled = n < 5;
-  $("go-hint").textContent = n < 5 ? t.go_wait : t.go_ready.replace("{addr}", S.support_address || "");
+  $("go").disabled = n5 < 5;
+  $("go-hint").textContent = n5 < 5 ? t.go_wait : t.go_ready.replace("{addr}", S.support_address || "");
 }
 
 async function refresh() {
@@ -332,6 +358,20 @@ $("md-btn").onclick = async () => {
     await refresh();
   } catch { $("md-err").hidden = false; $("md-err").textContent = L().neterr; }
   btn.disabled = false; btn.textContent = L().md_btn;
+};
+$("tr-again").onclick = () => { S.track123.done = false; render(); };
+$("tr-btn").onclick = async () => {
+  const btn = $("tr-btn"), key = $("tr-key").value.trim();
+  $("tr-err").hidden = true;
+  if (!key) { $("tr-key").focus(); return; }
+  btn.disabled = true; btn.textContent = L().md_testing;
+  try {
+    const r = await api("/track123", { key }, 30000);
+    $("tr-key").value = "";
+    if (!r.ok) { $("tr-err").hidden = false; $("tr-err").textContent = r.reason; }
+    await refresh();
+  } catch { $("tr-err").hidden = false; $("tr-err").textContent = L().neterr; }
+  btn.disabled = false; btn.textContent = L().tr_btn;
 };
 $("ru-btn").onclick = async () => {
   const days = [...document.querySelectorAll("#days input:checked")].map((i) => Number(i.value));
